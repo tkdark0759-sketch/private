@@ -1,5 +1,2 @@
 feedparser
-requests
-beautifulsoup4
-sumy
 deep-translator

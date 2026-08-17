@@ -20,10 +20,7 @@ jobs:
       - name: 패키지 설치
         run: pip install -r globenews-alert/requirements.txt
 
-      - name: 요약에 필요한 nltk 데이터 다운로드
-        run: python -c "import nltk; nltk.download('punkt'); nltk.download('punkt_tab')"
-
-      - name: 뉴스 수집 · 요약 · 전송 실행
+      - name: 뉴스 수집 · 번역 · 전송 실행
         working-directory: globenews-alert
         env:
           GMAIL_ADDRESS: ${{ secrets.GMAIL_ADDRESS }}

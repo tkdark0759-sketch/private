@@ -3,6 +3,7 @@ Google News RSS를 이용해 'site:globenewswire.com + 키워드' 조합으로
 GlobeNewswire에 게재된 관련 기사를 검색하는 모듈.
 """
 import re
+import requests
 import feedparser
 import urllib.parse
 from datetime import datetime, timedelta, timezone
@@ -18,10 +19,30 @@ def _strip_html(raw_html: str) -> str:
     """구글 뉴스 요약에 섞여 들어오는 HTML 태그를 제거하고 순수 텍스트만 남김"""
     if not raw_html:
         return ""
-    text = re.sub(r"<[^>]+>", " ", raw_html)  # 태그 제거
+    text = re.sub(r"<[^>]+>", " ", raw_html)
     text = re.sub(r"&nbsp;", " ", text)
     text = re.sub(r"\s+", " ", text).strip()
     return text
+
+
+def _resolve_real_link(google_link: str) -> str:
+    """구글 뉴스 중계 링크를 실제로 열어서, 최종적으로 도착하는 원문 주소를 알아냄"""
+    if not google_link:
+        return google_link
+    try:
+        resp = requests.get(
+            google_link,
+            timeout=10,
+            allow_redirects=True,
+            headers={"User-Agent": "Mozilla/5.0"},
+        )
+        final_url = resp.url
+        if "news.google.com" in final_url:
+            return google_link
+        return final_url
+    except Exception as e:
+        print(f"[링크 해석 실패] {google_link} ({e})")
+        return google_link
 
 
 def fetch_articles_for_keyword(keyword: str, hours: int = 24):
@@ -43,14 +64,7 @@ def fetch_articles_for_keyword(keyword: str, hours: int = 24):
 
         title = _strip_html(entry.get("title", ""))
         summary = _strip_html(entry.get("summary", ""))
-
-        # 구글 뉴스 RSS는 <source url="실제 원문 도메인">을 따로 제공함.
-        # entry.link는 구글 중계 링크(가끔 404)라서, 가능하면 원문 링크를 우선 사용.
-        real_link = ""
-        source = entry.get("source")
-        if source and isinstance(source, dict):
-            real_link = source.get("href", "")
-        link = real_link or entry.get("link", "")
+        link = _resolve_real_link(entry.get("link", ""))
 
         results.append({
             "keyword": keyword,

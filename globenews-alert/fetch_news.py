@@ -1,6 +1,9 @@
 """
-Google News RSS를 이용해 'site:globenewswire.com + 키워드' 조합으로
+Bing 뉴스 RSS를 이용해 'site:globenewswire.com + 키워드' 조합으로
 GlobeNewswire에 게재된 관련 기사를 검색하고, 실제 원문 페이지의 본문까지 가져오는 모듈.
+
+(구글 뉴스 RSS는 링크가 암호화되어 실제 주소를 코드로 알아낼 수 없어서
+ Bing 뉴스 RSS로 전환 - 이쪽은 링크가 원문 그대로 제공됨)
 """
 import re
 import requests
@@ -11,9 +14,7 @@ from bs4 import BeautifulSoup
 
 from keywords import KEYWORDS
 
-RSS_TEMPLATE = (
-    "https://news.google.com/rss/search?q={query}&hl=en-US&gl=US&ceid=US:en"
-)
+RSS_TEMPLATE = "https://www.bing.com/news/search?q={query}&format=rss"
 
 
 def _strip_html(raw_html: str) -> str:
@@ -25,43 +26,26 @@ def _strip_html(raw_html: str) -> str:
     return text
 
 
-def _fetch_real_page(google_link: str, max_chars: int = 3000):
-    """
-    구글 뉴스 중계 링크를 실제로 열어서:
-    - 최종 도착 URL (진짜 원문 주소)
-    - 본문 텍스트 (PDF면 빈 문자열)
-    를 함께 반환.
-    """
-    if not google_link:
-        return google_link, ""
-
+def _fetch_page_body(url: str, max_chars: int = 3000) -> str:
+    """실제 원문 페이지를 열어 본문 텍스트를 가져옴. PDF/실패 시 빈 문자열 반환."""
+    if not url:
+        return ""
     try:
         resp = requests.get(
-            google_link,
-            timeout=15,
-            allow_redirects=True,
+            url, timeout=15, allow_redirects=True,
             headers={"User-Agent": "Mozilla/5.0"},
         )
-        final_url = resp.url
-        if "news.google.com" in final_url:
-            final_url = google_link
-
         content_type = resp.headers.get("Content-Type", "")
-
-        if "pdf" in content_type.lower():
-            return final_url, ""
-
         if "html" not in content_type.lower():
-            return final_url, ""
+            return ""
 
         soup = BeautifulSoup(resp.text, "html.parser")
         paragraphs = [p.get_text(" ", strip=True) for p in soup.find_all("p")]
         body_text = "\n".join(p for p in paragraphs if p)
-        return final_url, body_text[:max_chars]
-
+        return body_text[:max_chars]
     except Exception as e:
-        print(f"[페이지 처리 실패] {google_link} ({e})")
-        return google_link, ""
+        print(f"[본문 수집 실패] {url} ({e})")
+        return ""
 
 
 def fetch_articles_for_keyword(keyword: str, hours: int = 24):
@@ -81,13 +65,18 @@ def fetch_articles_for_keyword(keyword: str, hours: int = 24):
             continue
 
         title = _strip_html(entry.get("title", ""))
-        real_link, body_text = _fetch_real_page(entry.get("link", ""))
+        link = entry.get("link", "")
+
+        if "globenewswire.com" not in link:
+            continue
+
+        body_text = _fetch_page_body(link)
 
         results.append({
             "keyword": keyword,
             "title": title,
             "body_text": body_text,
-            "link": real_link,
+            "link": link,
             "published": published_dt,
         })
 

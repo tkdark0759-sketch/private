@@ -1,7 +1,7 @@
 """
 매일 실행되는 메인 스크립트.
 1) 구글 뉴스에서 site:globenewswire.com + 키워드로 관련 기사 검색
-2) 구글 뉴스 스니펫을 한국어로 번역
+2) 원문 페이지 본문(또는 제목)을 한국어로 번역
 3) 결과를 이메일로 전송
 """
 import html as html_lib
@@ -28,7 +28,7 @@ def build_html(enriched_articles) -> str:
             <div style="font-size:12px; color:#888;">[{keyword}]</div>
             <div style="font-size:16px; font-weight:bold; margin:4px 0;">{title}</div>
             <div style="font-size:14px; line-height:1.6; margin:8px 0;">{summary_ko}</div>
-            <a href="{link}" style="font-size:13px; color:#1a73e8;">원문 보기 →</a>
+            <a href="{link}" style="font-size:12px; color:#888;">원문 링크(참고용)</a>
         </div>
         """)
 
@@ -42,7 +42,8 @@ def main():
     enriched = []
     for a in articles:
         print(f"처리 중: [{a['keyword']}] {a['title']}")
-        summary_ko = translate_to_korean(a.get("summary", "") or a["title"])
+        source_text = a["body_text"] or a["title"]
+        summary_ko = translate_to_korean(source_text)
         enriched.append({**a, "summary_ko": summary_ko})
 
     html_body = build_html(enriched)

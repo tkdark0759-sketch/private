@@ -1,9 +1,12 @@
-name: Daily GlobeNewswire Alert
+name: GlobeNewswire Alert
 
 on:
   schedule:
-    - cron: "0 23 * * *"
+    - cron: "0 */2 * * *"
   workflow_dispatch: {}
+
+permissions:
+  contents: write
 
 jobs:
   run:
@@ -27,3 +30,12 @@ jobs:
           GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
           ALERT_TO_EMAIL: ${{ secrets.ALERT_TO_EMAIL }}
         run: python main.py
+
+      - name: 중복 방지 기록 저장 (변경된 경우에만 커밋)
+        working-directory: globenews-alert
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add seen_guids.json
+          git diff --staged --quiet || git commit -m "update seen_guids"
+          git push

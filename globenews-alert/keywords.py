@@ -9,7 +9,7 @@ KEYWORDS = [
     "IREN",
     "AbCellera",
     "Bloom",
-    "edelson",
+    "aveanna",
     # 예시: 더 추가하고 싶으면 아래처럼 콤마로 이어서 넣으면 됩니다.
     # "AST SpaceMobile",
     # "Nebius",

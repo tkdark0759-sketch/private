@@ -3,6 +3,7 @@ GlobeNewswire 공식 "Public Companies" RSS 피드(최근 20건)를 가져와서
 keywords.py에 등록된 회사명이 제목/요약/기고자(dc:contributor)에 포함된
 기사만 걸러내는 모듈.
 """
+import time
 import requests
 import xml.etree.ElementTree as ET
 from email.utils import parsedate_to_datetime
@@ -18,10 +19,32 @@ def _text(elem, tag, ns=None):
     return found.text.strip() if found is not None and found.text else ""
 
 
+def _fetch_feed_with_retry(max_retries: int = 3, timeout: int = 30):
+    """타임아웃/일시적 오류에 대비해 몇 번 재시도하며 피드를 가져옴"""
+    last_error = None
+    for attempt in range(1, max_retries + 1):
+        try:
+            resp = requests.get(
+                FEED_URL, timeout=timeout,
+                headers={"User-Agent": "Mozilla/5.0 (compatible; NewsAlertBot/1.0)"},
+            )
+            resp.raise_for_status()
+            return resp.content
+        except Exception as e:
+            last_error = e
+            print(f"[피드 요청 실패 {attempt}/{max_retries}] {e}")
+            if attempt < max_retries:
+                time.sleep(5)
+    print(f"[피드 요청 최종 실패] {last_error}")
+    return None
+
+
 def fetch_matching_articles():
-    resp = requests.get(FEED_URL, timeout=15, headers={"User-Agent": "Mozilla/5.0"})
-    resp.raise_for_status()
-    root = ET.fromstring(resp.content)
+    content = _fetch_feed_with_retry()
+    if content is None:
+        return []
+
+    root = ET.fromstring(content)
 
     results = []
     for item in root.findall(".//item"):

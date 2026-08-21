@@ -10,7 +10,7 @@ from email.utils import parsedate_to_datetime
 
 from keywords import KEYWORDS
 
-FEED_URL = "https://www.globenewswire.com/RssFeed/orgclass/1/feedTitle/GlobeNewswire%20-%20News%20about%20Public%20Companies"
+FEED_URL = "https://rss.globenewswire.com/RssFeed/Content/Photo/ShowLogo/True/Language/EN/OrgClass/1/Max/100"
 NS = {"dc": "http://dublincore.org/documents/dcmi-namespace/"}
 
 

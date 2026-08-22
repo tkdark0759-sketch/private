@@ -74,7 +74,7 @@ def main():
     send_email(subject=f"[뉴스 알림] 새 기사 {len(enriched)}건", html_body=html_body)
 
     kakao_text = f"[뉴스 알림] 새 기사 {len(enriched)}건\n\n" + "\n\n".join(
-        f"[{a['keyword']}] {a['title']}" for a in enriched
+        f"[{a['keyword']}] {a['title']}\n{a['summary_ko']}" for a in enriched
     )
     send_kakao_message(kakao_text)
 

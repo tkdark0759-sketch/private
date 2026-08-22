@@ -73,6 +73,11 @@ def main():
     html_body = build_html(enriched)
     send_email(subject=f"[뉴스 알림] 새 기사 {len(enriched)}건", html_body=html_body)
 
+    kakao_text = f"[뉴스 알림] 새 기사 {len(enriched)}건\n\n" + "\n\n".join(
+        f"[{a['keyword']}] {a['title']}" for a in enriched
+    )
+    send_kakao_message(kakao_text)
+
     seen.update(a["guid"] for a in new_articles)
     save_seen(seen)
 

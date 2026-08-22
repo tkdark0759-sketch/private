@@ -29,6 +29,8 @@ jobs:
           GMAIL_ADDRESS: ${{ secrets.GMAIL_ADDRESS }}
           GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
           ALERT_TO_EMAIL: ${{ secrets.ALERT_TO_EMAIL }}
+          KAKAO_REST_API_KEY: ${{ secrets.KAKAO_REST_API_KEY }}
+          KAKAO_REFRESH_TOKEN: ${{ secrets.KAKAO_REFRESH_TOKEN }}
         run: python main.py
 
       - name: 중복 방지 기록 저장 (변경된 경우에만 커밋)

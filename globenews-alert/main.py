@@ -11,6 +11,7 @@ from bs4 import BeautifulSoup
 from fetch_news import fetch_matching_articles
 from summarize import translate_to_korean
 from send_email import send_email
+from send_kakao import send_kakao_message
 from state import load_seen, save_seen
 
 

@@ -6,6 +6,7 @@ import json
 import requests
 
 REST_API_KEY = os.environ.get("KAKAO_REST_API_KEY")
+CLIENT_SECRET = os.environ.get("KAKAO_CLIENT_SECRET")
 REFRESH_TOKEN = os.environ.get("KAKAO_REFRESH_TOKEN")
 
 
@@ -14,10 +15,12 @@ def _refresh_access_token() -> str:
     data = {
         "grant_type": "refresh_token",
         "client_id": REST_API_KEY,
+        "client_secret": CLIENT_SECRET,
         "refresh_token": REFRESH_TOKEN,
     }
     resp = requests.post(url, data=data, timeout=15)
-    resp.raise_for_status()
+    if resp.status_code != 200:
+        raise Exception(f"토큰 갱신 실패 ({resp.status_code}): {resp.text}")
     return resp.json()["access_token"]
 
 

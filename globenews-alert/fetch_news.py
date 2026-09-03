@@ -3,6 +3,7 @@ GlobeNewswire 공식 "Public Companies" RSS 피드(최근 20건)를 가져와서
 keywords.py에 등록된 회사명이 제목/요약/기고자(dc:contributor)에 포함된
 기사만 걸러내는 모듈.
 """
+import re
 import time
 import requests
 import xml.etree.ElementTree as ET
@@ -46,20 +47,18 @@ def fetch_matching_articles():
 
     root = ET.fromstring(content)
 
-    results = []
-    for item in root.findall(".//item"):
-        title = _text(item, "title")
-        description = _text(item, "description")
-        link = _text(item, "link")
-        guid = _text(item, "guid") or link
-        pub_date_raw = _text(item, "pubDate")
-        contributor = _text(item, "dc:contributor", NS)
+    def _matches_keyword(haystack: str, keyword: str) -> bool:
+        """단어 경계를 지켜서 매칭 (예: 'IREN'이 'siren' 안의 'iren'과 혼동되지 않도록)"""
+        pattern = r"(?<![A-Za-z0-9])" + re.escape(keyword) + r"(?![A-Za-z0-9])"
+        return re.search(pattern, haystack, re.IGNORECASE) is not None
 
-        haystack = f"{title} {description} {contributor}".lower()
+    results = []
+    for item in all_items:
+        haystack = f"{item['title']} {item['description']} {item['contributor']}"
 
         matched_keyword = None
         for kw in KEYWORDS:
-            if kw.lower() in haystack:
+            if _matches_keyword(haystack, kw):
                 matched_keyword = kw
                 break
         if not matched_keyword:

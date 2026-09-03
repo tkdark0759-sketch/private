@@ -1,11 +1,10 @@
 """
-GlobeNewswire 공식 피드에서 키워드가 매칭되는 새 기사를 찾아
-한국어로 번역해서 이메일로 보내는 메인 스크립트.
-공식 피드의 description 필드에 기사 전문이 HTML로 포함되어 있어서,
-별도로 원문 페이지를 다시 열지 않고 이 description을 바로 사용함.
+GlobeNewswire 기사 중 키워드가 매칭되는 새 기사를 찾아
+한국어로 번역해서 이메일과 카카오톡으로 보내는 메인 스크립트.
 """
 import re
 import html as html_lib
+import requests
 from bs4 import BeautifulSoup
 
 from fetch_news import fetch_matching_articles
@@ -14,9 +13,10 @@ from send_email import send_email
 from send_kakao import send_kakao_message
 from state import load_seen, save_seen
 
+HEADERS = {"User-Agent": "Mozilla/5.0 (compatible; NewsAlertBot/1.0)"}
+
 
 def strip_html(raw_html: str) -> str:
-    """HTML 태그를 제거하고 읽기 좋은 순수 텍스트만 남김"""
     if not raw_html:
         return ""
     soup = BeautifulSoup(raw_html, "html.parser")
@@ -28,6 +28,22 @@ def strip_html(raw_html: str) -> str:
     text = re.sub(r"\s+\n", "\n", text)
     text = re.sub(r"[ \t]+", " ", text)
     return text.strip()
+
+
+def fetch_article_body(url: str, max_chars: int = 3000) -> str:
+    if not url:
+        return ""
+    try:
+        resp = requests.get(url, timeout=15, headers=HEADERS)
+        if "html" not in resp.headers.get("Content-Type", "").lower():
+            return ""
+        soup = BeautifulSoup(resp.text, "html.parser")
+        paragraphs = [p.get_text(" ", strip=True) for p in soup.find_all("p")]
+        body_text = "\n".join(p for p in paragraphs if p)
+        return body_text[:max_chars]
+    except Exception as e:
+        print(f"[본문 수집 실패] {url} ({e})")
+        return ""
 
 
 def build_html(enriched_articles) -> str:
@@ -53,6 +69,8 @@ def build_html(enriched_articles) -> str:
 
 def main():
     seen = load_seen()
+    is_first_run = len(seen) == 0
+
     matched = fetch_matching_articles()
     print(f"매칭된 기사 수(전체): {len(matched)}")
 
@@ -63,10 +81,20 @@ def main():
         print("새 기사가 없어 메일을 보내지 않습니다.")
         return
 
+    if is_first_run:
+        print(f"최초 실행이라 과거 기사 {len(new_articles)}건은 알림 없이 기록만 합니다.")
+        seen.update(a["guid"] for a in new_articles)
+        save_seen(seen)
+        return
+
     enriched = []
     for a in new_articles:
         print(f"처리 중: [{a['keyword']}] {a['title']}")
-        plain_text = strip_html(a["description"]) or a["title"]
+        plain_text = strip_html(a["description"])
+        if not plain_text:
+            plain_text = strip_html(fetch_article_body(a["link"]))
+        if not plain_text:
+            plain_text = a["title"]
         summary_ko = translate_to_korean(plain_text)
         enriched.append({**a, "summary_ko": summary_ko})
 

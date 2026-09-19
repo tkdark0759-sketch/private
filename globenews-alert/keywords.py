@@ -6,7 +6,7 @@
 # ==========================================================
 
 KEYWORDS = [
-    "IREN",
+    "IREN Limited",
     "AbCellera",
     "palantir",
     

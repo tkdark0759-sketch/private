@@ -43,7 +43,7 @@ def _request_with_retry(url: str, max_retries: int = 3, timeout: int = 30):
 
 
 def fetch_org_articles(keyword: str):
-    url = ORG_SEARCH_URL.format(query=quote(keyword))
+    url = ORG_SEARCH_URL.format(query=quote(keyword.lower()))
     resp = _request_with_retry(url)
     if resp is None:
         return []

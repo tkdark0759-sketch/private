@@ -129,20 +129,23 @@ def fetch_matching_articles():
     seen_guids = set()
 
     for kw in KEYWORDS:
-        for item in fetch_org_articles(kw):
+        org_items = fetch_org_articles(kw)
+        print(f"[조직검색] '{kw}' → {len(org_items)}건")
+        for item in org_items:
             if item["guid"] in seen_guids:
                 continue
             seen_guids.add(item["guid"])
             all_results.append(item)
 
-    for item in fetch_class_action_matches():
+    ca_items = fetch_class_action_matches()
+    print(f"[소송피드] → {len(ca_items)}건")
+    for item in ca_items:
         if item["guid"] in seen_guids:
             continue
         seen_guids.add(item["guid"])
         all_results.append(item)
 
     return all_results
-
 
 if __name__ == "__main__":
     for a in fetch_matching_articles():

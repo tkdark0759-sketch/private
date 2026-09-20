@@ -1,9 +1,8 @@
 """
-두 가지 방식을 조합해서 기사를 찾는 모듈:
-1) 회사 자체 뉴스 - GlobeNewswire "조직 검색" 페이지를 직접 조회
-   (전체 기록에서 정확한 회사명으로 검색되므로, 오탐도 없고 놓치는 것도 없음)
-2) 소송/공지(제3자가 그 회사를 언급하는 경우) - "Class Action" 카테고리 피드에서
-   단어 경계를 지켜서 키워드 매칭
+세 가지 소스를 조합해서 기사를 찾는 모듈:
+1) GlobeNewswire 조직 검색 - 회사 자체 뉴스를 정확하게 (전체 기록, 오탐 없음)
+2) GlobeNewswire Class Action 피드 - 소송/공지(제3자 언급)를 단어경계 매칭으로
+3) Business Wire 전체 피드 - 단어경계 매칭으로 (Palantir 등 GlobeNewswire를 안 쓰는 회사 커버용)
 """
 import re
 import time
@@ -16,6 +15,7 @@ from keywords import KEYWORDS
 
 ORG_SEARCH_URL = "https://www.globenewswire.com/search/organization/{query}"
 CLASS_ACTION_FEED_URL = "https://www.globenewswire.com/RssFeed/subjectcode/84-Class%20Action/feedTitle/GlobeNewswire%20-%20Class%20Action"
+BUSINESSWIRE_FEED_URL = "https://feed.businesswire.com/rss/home/?rss=G1QFDERJXkpaGVlYXg=="
 NS = {"dc": "http://dublincore.org/documents/dcmi-namespace/"}
 
 HEADERS = {"User-Agent": "Mozilla/5.0 (compatible; NewsAlertBot/1.0)"}
@@ -87,8 +87,8 @@ def _text(elem, tag, ns=None):
     return found.text.strip() if found is not None and found.text else ""
 
 
-def fetch_class_action_matches():
-    resp = _request_with_retry(CLASS_ACTION_FEED_URL)
+def _fetch_and_match_rss(url: str, has_contributor: bool = True):
+    resp = _request_with_retry(url)
     if resp is None:
         return []
 
@@ -100,7 +100,7 @@ def fetch_class_action_matches():
         description = _text(item, "description")
         link = _text(item, "link")
         guid = _text(item, "guid") or link
-        contributor = _text(item, "dc:contributor", NS)
+        contributor = _text(item, "dc:contributor", NS) if has_contributor else ""
 
         haystack = f"{title} {description} {contributor}"
 
@@ -129,23 +129,26 @@ def fetch_matching_articles():
     seen_guids = set()
 
     for kw in KEYWORDS:
-        org_items = fetch_org_articles(kw)
-        print(f"[조직검색] '{kw}' → {len(org_items)}건")
-        for item in org_items:
+        for item in fetch_org_articles(kw):
             if item["guid"] in seen_guids:
                 continue
             seen_guids.add(item["guid"])
             all_results.append(item)
 
-    ca_items = fetch_class_action_matches()
-    print(f"[소송피드] → {len(ca_items)}건")
-    for item in ca_items:
+    for item in _fetch_and_match_rss(CLASS_ACTION_FEED_URL, has_contributor=True):
+        if item["guid"] in seen_guids:
+            continue
+        seen_guids.add(item["guid"])
+        all_results.append(item)
+
+    for item in _fetch_and_match_rss(BUSINESSWIRE_FEED_URL, has_contributor=False):
         if item["guid"] in seen_guids:
             continue
         seen_guids.add(item["guid"])
         all_results.append(item)
 
     return all_results
+
 
 if __name__ == "__main__":
     for a in fetch_matching_articles():
